@@ -18,8 +18,6 @@ import matplotlib.animation as animation
 
 from filterpy.kalman import KalmanFilter
 
-import point_process as pp
-
 file_name = "test_data.csv"
 
 
@@ -223,15 +221,17 @@ try:
 
         results, points = hand_detector.get_world_points(color_image, drawPoints=True)
 
+        depth_point = None
+        
         dt = fps.showFPS(color_image)
 
         if points is not None and not saveMode:
+        
 
-            fliter_point = pp.point_proccessing(points, results, color_image, aligned_depth_frame, camera_intrinsics, dt)
-            if fliter_point is not None:
-                plot_update(fliter_point)
 
-        plt.pause(0.01)
+        # plot_update(fliter_point)
+
+        # plt.pause(0.01)
                     
         images = np.hstack((color_image, depth_image))
 

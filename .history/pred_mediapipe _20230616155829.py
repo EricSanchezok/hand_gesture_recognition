@@ -11,15 +11,6 @@ import data_process as dp
 
 from pointnet_model import get_model
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
-import matplotlib.animation as animation
-
-from filterpy.kalman import KalmanFilter
-
-import point_process as pp
-
 file_name = "test_data.csv"
 
 
@@ -93,7 +84,7 @@ class mediaPipeHand:
 
             points = np.array(points).reshape(1, -1)
         else:
-            #print("No hand detected")
+            print("No hand detected")
             results = None
             points = None
             
@@ -111,8 +102,6 @@ class FPS:
         fps = 1/(self.cTime - self.pTime)
         self.pTime = self.cTime
         cv2.putText(img, str(int(fps)), (30, 100), cv2.FONT_HERSHEY_PLAIN, 10, (255, 0, 255), 5)
-
-        return self.cTime - self.pTime
     
 
 
@@ -128,69 +117,19 @@ depth_sensor = profile.get_device().first_depth_sensor()
 depth_scale = depth_sensor.get_depth_scale()
 print("Depth Scale is: " , depth_scale)
 
-stream_profile = profile.get_stream(rs.stream.depth) # Fetch stream profile for depth stream
-camera_intrinsics = stream_profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
-
-align = rs.align(rs.stream.color)
+align_to = rs.stream.color
+align = rs.align(align_to)
 
 
 hand_detector = mediaPipeHand()
 fps = FPS()
 data_saver = DataSaver(file_name)
 
-
+# 加载模型
+model = get_model(num_classes=4, global_feat=True, feature_transform=False, channel=3)
+model.load_state_dict(torch.load('model.pth'))
 
 saveMode = False
-
-# 创建一个空的图形对象
-fig = plt.figure(figsize=(24, 16))
-
-# 创建一个空的坐标轴对象
-ax = plt.axes(projection='3d')
-ax.view_init(elev=15, azim=0)
-
-
-# 初始化数据
-x = []
-y = []
-z = []
-
-midy = -0.55
-midz = -0.16
-length = 2.0
-
-# 设置坐标轴范围
-x_min, x_max = 0, length
-y_min, y_max = midy - length/2, midy + length/2
-z_min, z_max = midz - length/2, midz + length/2
-
-def plot_update(depth_point):
-    # 在更新函数中修改数据
-    x.append(depth_point[0])
-    y.append(depth_point[1])
-    z.append(depth_point[2])
-
-    # 清空坐标轴
-    ax.clear()
-
-    # 绘制新的数据点
-    ax.scatter3D(x, y, z)
-
-    # 设置坐标轴范围
-    ax.set_xlim(x_min, x_max)
-    ax.set_ylim(y_min, y_max)
-    ax.set_zlim(z_min, z_max)
-
-    # 添加其他绘图元素
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Hand Path')
-
-ani = animation.FuncAnimation(fig, plot_update, interval=30)
-
-
-
 
 try:
     while True:
@@ -203,9 +142,7 @@ try:
 
         # Get aligned frames
         aligned_depth_frame = aligned_frames.get_depth_frame() # aligned_depth_frame is a 1920x1080 depth image
-        #color_frame = aligned_frames.get_color_frame()
-
-        color_frame = aligned_frames.first(rs.stream.color)
+        color_frame = aligned_frames.get_color_frame()
 
         # Validate that both frames are valid
         if not aligned_depth_frame or not color_frame:
@@ -222,16 +159,18 @@ try:
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
         results, points = hand_detector.get_world_points(color_image, drawPoints=True)
-
-        dt = fps.showFPS(color_image)
-
+        
         if points is not None and not saveMode:
 
-            fliter_point = pp.point_proccessing(points, results, color_image, aligned_depth_frame, camera_intrinsics, dt)
-            if fliter_point is not None:
-                plot_update(fliter_point)
+            X, _ = dp.data_to_points_cloud(points)
 
-        plt.pause(0.01)
+            with torch.no_grad():
+                model.eval()
+                predictions, _, _ = model(X)
+                predictions = predictions.max(1)[1]
+                print(predictions)
+
+        fps.showFPS(color_image)
                     
         images = np.hstack((color_image, depth_image))
 

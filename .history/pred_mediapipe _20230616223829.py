@@ -228,10 +228,10 @@ try:
         if points is not None and not saveMode:
 
             fliter_point = pp.point_proccessing(points, results, color_image, aligned_depth_frame, camera_intrinsics, dt)
-            if fliter_point is not None:
-                plot_update(fliter_point)
+            # if fliter_point is not None:
+            #     plot_update(fliter_point)
 
-        plt.pause(0.01)
+        # plt.pause(0.01)
                     
         images = np.hstack((color_image, depth_image))
 

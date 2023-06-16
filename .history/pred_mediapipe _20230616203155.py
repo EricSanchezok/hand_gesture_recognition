@@ -18,8 +18,6 @@ import matplotlib.animation as animation
 
 from filterpy.kalman import KalmanFilter
 
-import point_process as pp
-
 file_name = "test_data.csv"
 
 
@@ -138,7 +136,9 @@ hand_detector = mediaPipeHand()
 fps = FPS()
 data_saver = DataSaver(file_name)
 
-
+# 加载模型
+model = get_model(num_classes=4, global_feat=True, feature_transform=False, channel=3)
+model.load_state_dict(torch.load('model.pth'))
 
 saveMode = False
 
@@ -147,49 +147,53 @@ fig = plt.figure(figsize=(24, 16))
 
 # 创建一个空的坐标轴对象
 ax = plt.axes(projection='3d')
-ax.view_init(elev=15, azim=0)
-
 
 # 初始化数据
 x = []
 y = []
 z = []
 
-midy = -0.55
-midz = -0.16
-length = 2.0
-
-# 设置坐标轴范围
-x_min, x_max = 0, length
-y_min, y_max = midy - length/2, midy + length/2
-z_min, z_max = midz - length/2, midz + length/2
-
-def plot_update(depth_point):
+def update(depth_point):
     # 在更新函数中修改数据
     x.append(depth_point[0])
-    y.append(depth_point[1])
-    z.append(depth_point[2])
+    y.append(depth_point[2])
+    z.append(depth_point[1])
 
     # 清空坐标轴
     ax.clear()
 
     # 绘制新的数据点
     ax.scatter3D(x, y, z)
-
-    # 设置坐标轴范围
-    ax.set_xlim(x_min, x_max)
-    ax.set_ylim(y_min, y_max)
-    ax.set_zlim(z_min, z_max)
-
     # 添加其他绘图元素
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.set_title('Hand Path')
 
-ani = animation.FuncAnimation(fig, plot_update, interval=30)
+ani = animation.FuncAnimation(fig, update, interval=30)
 
+# 初始化卡尔曼滤波器
+kf = KalmanFilter(dim_x=6, dim_z=3)  # 状态向量维度为3，观测向量维度为3
 
+# 定义观测矩阵
+kf.H = np.array([[1, 0, 0, 0, 0, 0],
+                 [0, 1, 0, 0, 0, 0],
+                 [0, 0, 1, 0, 0, 0]])
+
+q = 1e-5  # 过程噪声方差
+# 定义过程噪声协方差矩阵
+kf.Q = np.eye(6) * q  # q为过程噪声方差
+
+r = 0.1  # 测量噪声方差
+# 定义测量噪声协方差矩阵
+kf.R = np.eye(3) * r  # r为测量噪声方差
+
+# 初始化状态向量和状态协方差矩阵
+kf.x = np.zeros((6, 1))
+kf.P = np.eye(6)
+
+# 存储滤波结果
+filtered_positions = []
 
 
 try:
@@ -223,15 +227,68 @@ try:
 
         results, points = hand_detector.get_world_points(color_image, drawPoints=True)
 
-        dt = fps.showFPS(color_image)
-
+        depth_point = None
+        
         if points is not None and not saveMode:
 
-            fliter_point = pp.point_proccessing(points, results, color_image, aligned_depth_frame, camera_intrinsics, dt)
-            if fliter_point is not None:
-                plot_update(fliter_point)
+            X, _ = dp.data_to_points_cloud(points)
 
-        plt.pause(0.01)
+            with torch.no_grad():
+                model.eval()
+                predictions, _, _ = model(X)
+                pred_val = predictions.max(1)[0]
+                pred_index = predictions.max(1)[1]
+                #print(pred_val, pred_index, end='\r')
+
+            img_width, img_height = color_image.shape[1], color_image.shape[0]
+
+            if pred_val >= 0.8 and pred_index <= 1.2 and pred_index == 1:
+                for handLms in results.multi_hand_landmarks:
+                    for id, lm in enumerate(handLms.landmark):
+                        if id == 8:
+                            cx, cy = min(int(lm.x * img_width), img_width-1), min(int(lm.y * img_height), img_height-1)
+                            cv2.circle(color_image, (cx, cy), 30, (255, 0, 0), cv2.FILLED)
+                            depth_value = aligned_depth_frame.get_distance(cx, cy)
+                            depth_pixel = [cx, cy]
+                            depth_point = rs.rs2_deproject_pixel_to_point(camera_intrinsics, depth_pixel, depth_value)
+
+                            #判断是否是0
+                            if depth_point[0] == 0 and depth_point[1] == 0 and depth_point[2] == 0:
+                                continue
+
+                            #print(depth_point)
+
+
+
+
+        dt = fps.showFPS(color_image)
+
+        #假设目标的运动模式为匀速运动，因此状态转移矩阵为：
+        kf.F = np.array([[1, 0, 0, dt, 0, 0],
+                        [0, 1, 0, 0, dt, 0],
+                        [0, 0, 1, 0, 0, dt],
+                        [0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 0, 1]])
+        
+        if depth_point is not None:
+        
+            # 预测步骤
+            kf.predict()
+
+            measurement = np.array([depth_point[0], depth_point[2], depth_point[1]])
+
+            # 更新步骤
+            kf.update(measurement)
+
+            # 获取滤波结果
+            filtered_positions.append(kf.x[:3, 0])
+
+            print(kf.x[:3, 0])
+
+        # update(depth_point)
+
+        # plt.pause(0.01)
                     
         images = np.hstack((color_image, depth_image))
 
