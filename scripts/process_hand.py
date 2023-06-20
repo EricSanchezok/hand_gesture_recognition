@@ -21,7 +21,6 @@ class DataSaver:
                     for id, lm in enumerate(handLms.landmark):
                         self.file.write(lm.x.__str__() + "," + lm.y.__str__() + "," + lm.z.__str__() + ",")
                     self.file.write(label.__str__() + "\n")
-                #print("label: " + label.__str__() + " is written")
 
 
     def readytosave(self, key, results, flip=False, curPred=0):
@@ -62,9 +61,12 @@ class DataSaver:
         #9状态
         if key & 0xFF == ord('9'):
             self.save_label = 9
+        #ok状态
+        if key & 0xFF == ord('a'):
+            self.save_label = 10
         
 
-        print("状态:", self.start_save, "当前预测:", curPred, "编号:", self.save_label, "次数:", self.save_num, end='\r')
+        print("状态:", self.start_save, "当前预测:", curPred, "编号:", self.save_label, "次数:", self.save_num)
         if self.start_save:
             self.writeData(results, self.save_label)
             self.save_num += 1

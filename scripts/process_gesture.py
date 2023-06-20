@@ -1,6 +1,6 @@
 import torch
 from pointnet_model import get_model
-import data_process as dp
+import process_data as p_data
 
 import os
 
@@ -9,7 +9,7 @@ import cv2
 
 
 # 加载模型
-model = get_model(num_classes=10, global_feat=True, feature_transform=True, channel=3)
+model = get_model(num_classes=11, global_feat=True, feature_transform=False, channel=3)
 
 model_dir = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(__file__))), 'model/model.pth')
 
@@ -22,7 +22,7 @@ def get_pred(points, angle_list, IsPrint=False):
     if points is None:
         return None, None
 
-    X, _ = dp.data_to_points_cloud(points)
+    X, _ = p_data.data_to_points_cloud(points)
 
     with torch.no_grad():
         model.eval()
@@ -51,7 +51,7 @@ def get_pred(points, angle_list, IsPrint=False):
 def history_most_index(index, history_index_list):
 
     history_index_list.append(index)
-    if len(history_index_list) > 10:
+    if len(history_index_list) > 5:
         history_index_list.pop(0)
 
     # 选取list中出现次数最多的元素
@@ -82,7 +82,7 @@ def cal_finger_angle(results, show_color_image):
 
             angle_list.append(angle)
 
-            cv2.putText(show_color_image, str(round(angle, 2)), tuple(np.multiply(b, [1280, 720]).astype(int)),
+            cv2.putText(show_color_image, str(round(angle, 2)), tuple(np.multiply(b, [640, 480]).astype(int)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
                 
         return angle_list
