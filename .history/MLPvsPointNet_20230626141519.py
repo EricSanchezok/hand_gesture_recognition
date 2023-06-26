@@ -46,8 +46,8 @@ def main():
         handLandmarks_points, handworldLandmarks_points = hand_detector.get_landmarks(show_color_image, draw_fingers=True)
 
         if handworldLandmarks_points is not None:
-            mlp_index = Process_Landmarks.get_pred_index(MLP_model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
-            pointnet_index = Process_Landmarks.get_pred_index(Pointnet_model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
+            mlp_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
+            pointnet_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
 
             print("MLP: ", mlp_index, "PointNet: ", pointnet_index)
         

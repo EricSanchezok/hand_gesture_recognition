@@ -16,23 +16,25 @@ def get_pred_index(model, handworldLandmarks_points, history_size = 10, print_pr
 
     X, _ = Data_Preprocess.landmarks_to_points_cloud(landmarks_points)
 
+    # with torch.no_grad():
+    #     model.eval()
+    #     predictions, _, _ = model(X)
+    #     ori_pred_val = predictions.max(1)[0]
+    #     ori_pred_index = predictions.max(1)[1]
+
+    #     pred_val = ori_pred_val.item()
+    #     pred_index = ori_pred_index.item()
+
     if type(model).__name__ == 'MLP':
         X, _ = Data_Preprocess.landmarks_to_linear_data(landmarks_points)
         with torch.no_grad():
             model.eval()
             predictions = model(X)
-
     else:
         X, _ = Data_Preprocess.landmarks_to_points_cloud(landmarks_points)
         with torch.no_grad():
             model.eval()
             predictions, _, _ = model(X)
-
-    ori_pred_val = predictions.max(1)[0]
-    ori_pred_index = predictions.max(1)[1]
-
-    pred_val = ori_pred_val.item()
-    pred_index = ori_pred_index.item()
 
 
     most_index = history_most_index(pred_index, history_index_list, history_size)

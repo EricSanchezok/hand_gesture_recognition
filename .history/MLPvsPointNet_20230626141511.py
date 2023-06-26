@@ -23,6 +23,7 @@ Pointnet_model.load_state_dict(torch.load(abs_model_dir))
 
 # 加载模型
 MLP_model = MLP_Model.MLP(63, 0.1)
+
 abs_model_dir = os.path.join(os.path.abspath('model/mlp.pth'))
 MLP_model.load_state_dict(torch.load(abs_model_dir))
 
@@ -46,8 +47,8 @@ def main():
         handLandmarks_points, handworldLandmarks_points = hand_detector.get_landmarks(show_color_image, draw_fingers=True)
 
         if handworldLandmarks_points is not None:
-            mlp_index = Process_Landmarks.get_pred_index(MLP_model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
-            pointnet_index = Process_Landmarks.get_pred_index(Pointnet_model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
+            mlp_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
+            pointnet_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
 
             print("MLP: ", mlp_index, "PointNet: ", pointnet_index)
         

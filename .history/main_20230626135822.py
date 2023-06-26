@@ -5,12 +5,13 @@ import cv2
 
 import Data_Saver
 import Hand_Detector 
-import MLP_Model
+import Pointnet_Model
 import Process_Landmarks
+import Tracking_3D_Point
 import visualization as vis
 
 
-save_data_mode = True
+save_data_mode = False
 
 abs_data_dir = os.path.join(os.path.abspath("dataset/test_data.csv"))
 
@@ -21,10 +22,9 @@ if save_data_mode:
 hand_detector = Hand_Detector.mediaPipe_Hand_Detector() 
 
 # 加载模型
-model = MLP_Model.MLP(63, 0.1)
-abs_model_dir = os.path.join(os.path.abspath('model/mlp.pth'))
+model = Pointnet_Model.get_model(num_classes=11, global_feat=True, feature_transform=False, channel=3)
+abs_model_dir = os.path.join(os.path.abspath('model/model.pth'))
 model.load_state_dict(torch.load(abs_model_dir))
-
 
 fps = vis.FPS()
 
@@ -35,6 +35,7 @@ if not cap.isOpened():
     exit()
 
 def main():
+
 
     while True:
 
@@ -49,7 +50,8 @@ def main():
 
         handLandmarks_points, handworldLandmarks_points = hand_detector.get_landmarks(show_color_image, draw_fingers=True)
 
-        current_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=not save_data_mode)
+        last_index = current_index
+        current_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
 
         dt = fps.showFPS(show_color_image, print_FPS=False)
 

@@ -12,20 +12,20 @@ import MLP_Model
 
 
 # 读取训练数据
-abs_data_dir = os.path.join(os.path.abspath("dataset/xiaohang_data.csv"))
-xiaohang_data = pd.read_csv(abs_data_dir)
-print(xiaohang_data.shape)
+abs_data_dir = os.path.join(os.path.abspath("dataset/data_1.csv"))
+data_1 = pd.read_csv(abs_data_dir)
+print(data_1.shape)
 
-xiaohang_numpy = xiaohang_data.to_numpy()
+data_1_numpy = data_1.to_numpy()
 
-abs_data_dir = "dataset/aliang_data.csv"
-abs_data_dir = os.path.join(os.path.abspath("dataset/aliang_data.csv"))
-aliang_data = pd.read_csv(abs_data_dir)
-print(aliang_data.shape)
+abs_data_dir = "dataset/data_2.csv"
+abs_data_dir = os.path.join(os.path.abspath("dataset/data_2.csv"))
+data_2 = pd.read_csv(abs_data_dir)
+print(data_2.shape)
 
-aliang_numpy = aliang_data.to_numpy()
+data_2_numpy = data_2.to_numpy()
 
-train_data = np.concatenate((xiaohang_numpy, aliang_numpy), axis=0)
+train_data = np.concatenate((data_1_numpy, data_2_numpy), axis=0)
 
 print(train_data.shape)
 

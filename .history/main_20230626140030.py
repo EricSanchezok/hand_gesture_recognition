@@ -10,7 +10,7 @@ import Process_Landmarks
 import visualization as vis
 
 
-save_data_mode = True
+save_data_mode = False
 
 abs_data_dir = os.path.join(os.path.abspath("dataset/test_data.csv"))
 
@@ -36,6 +36,7 @@ if not cap.isOpened():
 
 def main():
 
+
     while True:
 
         ret, frame = cap.read()
@@ -49,7 +50,7 @@ def main():
 
         handLandmarks_points, handworldLandmarks_points = hand_detector.get_landmarks(show_color_image, draw_fingers=True)
 
-        current_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=not save_data_mode)
+        current_index = Process_Landmarks.get_pred_index(model, handworldLandmarks_points, history_size = 5, print_pred_index=False)
 
         dt = fps.showFPS(show_color_image, print_FPS=False)
 

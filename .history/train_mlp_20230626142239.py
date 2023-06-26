@@ -1,29 +1,31 @@
 import torch
 import torch.nn as nn
 import pandas as pd
-import numpy as np
-
-import Data_Preprocess as p_data
-import Pointnet_Model as pm
-import visualization as vis
-
 import os
 
+import numpy as np
+
+import Data_Preprocess
+
+import visualization as vis
+import MLP_Model
+
+
 # 读取训练数据
-abs_data_dir = os.path.join(os.path.abspath("dataset/xiaohang_data.csv"))
-xiaohang_data = pd.read_csv(abs_data_dir)
-print(xiaohang_data.shape)
+abs_data_dir = os.path.join(os.path.abspath("dataset/data_1.csv"))
+data_1 = pd.read_csv(abs_data_dir)
+print(data_1.shape)
 
-xiaohang_numpy = xiaohang_data.to_numpy()
+data_1_numpy = data_1.to_numpy()
 
-abs_data_dir = "dataset/aliang_data.csv"
-abs_data_dir = os.path.join(os.path.abspath("dataset/aliang_data.csv"))
-aliang_data = pd.read_csv(abs_data_dir)
-print(aliang_data.shape)
+abs_data_dir = "dataset/data_2.csv"
+abs_data_dir = os.path.join(os.path.abspath("dataset/data_2.csv"))
+data_2 = pd.read_csv(abs_data_dir)
+print(data_2.shape)
 
-aliang_numpy = aliang_data.to_numpy()
+data_2_numpy = data_2.to_numpy()
 
-train_data = np.concatenate((xiaohang_numpy, aliang_numpy), axis=0)
+train_data = np.concatenate((data_1_numpy, data_2_numpy), axis=0)
 
 print(train_data.shape)
 
@@ -40,10 +42,8 @@ train_data = train_data.drop(test_data.index)
 print(train_data.shape, test_data.shape)
 
 
-X, y = p_data.landmarks_to_points_cloud(train_data)
-Xval, yval = p_data.landmarks_to_points_cloud(test_data)
-
-print(X.shape, y.shape, Xval.shape, yval.shape)
+X, y = Data_Preprocess.landmarks_to_linear_data(train_data)
+Xval, yval = Data_Preprocess.landmarks_to_linear_data(test_data)
 
 ngpu= 1
 # Decide which device we want to run on
@@ -54,18 +54,24 @@ y = y.to(device)
 Xval = Xval.to(device)
 yval = yval.to(device)
 
+print(X.shape, y.shape, Xval.shape, yval.shape)
 
-model = pm.get_model(num_classes=11, global_feat=True, feature_transform=False, channel=3)
+
+
+# 创建 MLP 模型实例
+model = MLP_Model.MLP(63, 0.1)
 
 model.cuda(device=device)
 
 # 定义损失函数和优化器
 loss = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(),lr = 0.00001)
+optimizer = torch.optim.Adam(model.parameters(),lr = 0.0001)
+
 
 
 num_epochs = 20
 num_samples = X.shape[0]
+
 batch_size = 32
 
 # label_list = ['train_loss', 'val_loss']
@@ -79,7 +85,7 @@ for epoch in range(num_epochs):
  
         # 前向传播
         model.train()
-        output, trans, trans_feat = model(input)
+        output = model(input)
 
         l = loss(output, label)
         
@@ -91,9 +97,10 @@ for epoch in range(num_epochs):
         train_loss += l.item()
 
     train_loss /= num_samples
+
     with torch.no_grad():
         model.eval()
-        y_pred, _, _ = model(Xval)
+        y_pred = model(Xval)
         val_loss = loss(y_pred, yval).item()
 
     # value = []
@@ -101,13 +108,15 @@ for epoch in range(num_epochs):
     # value.append(val_loss)
     # plotters.draw_2Dvalue(value)
 
-
     # 打印每个 epoch 的损失
     print(f'Epoch {epoch+1}/{num_epochs}, train_Loss: {train_loss}, val_Loss: {val_loss}')
     
-    if val_loss < 0.0001:
-        break
+    # if val_loss < 0.005:
+    #     break
     
 
-abs_data_dir = os.path.join(os.path.abspath("model/pointnet.pth"))
+
+
+# 保存模型
+abs_data_dir = os.path.join(os.path.abspath("model/mlp.pth"))
 torch.save(model.state_dict(), abs_data_dir)

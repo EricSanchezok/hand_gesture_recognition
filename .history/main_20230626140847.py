@@ -36,6 +36,7 @@ if not cap.isOpened():
 
 def main():
 
+
     while True:
 
         ret, frame = cap.read()
